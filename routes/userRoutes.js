@@ -1,13 +1,16 @@
 import express from "express";
 import {
+  checkLikedByUser,
   getMostLikedSongs,
   getMostPlayedSongs,
   getMostPlayedSongsByGenre,
+  getNewReleases,
   getPlayListByUserId,
   getPlaylistWithSongs,
+  getSongDetailsById,
+  getSongsByCreator,
   searchSongsByTitle,
   toggleLikeSong,
-  updatePlayCount,
 } from "../services/songServices.js";
 import { getCreatorDetailsByid } from "../services/creatorServices.js";
 import { authenticateToken, generateToken } from "../authMiddleware.js";
@@ -15,22 +18,20 @@ import { AddSongToPlayList, createPlayList } from "../services/userServices.js";
 import { loginUser, signUpUser } from "../services/userServices.js";
 const router = express.Router();
 
-router.post("/song/:id", async (req, res) => {
+router.get("/play/:id", async (req, res) => {
   const { id } = req.params;
   const songId = parseInt(id);
-
-  if (isNaN(songId)) {
-    return res.status(400).send({ error: "Invalid song ID, homie." });
+  const { song, dbError } = await getSongDetailsById(songId);
+  if (dbError) {
+    return res.status(404).send({
+      error: dbError,
+    });
   }
-  
-  const { isPlayCountUpdated } = await updatePlayCount(songId);
-
-  if (isPlayCountUpdated) {
-    return res.status(200).send({ isPlayCountUpdated });
-  }
-
-  return res.status(500).send({ isPlayCountUpdated });
+  res.send({
+    song,
+  });
 });
+
 router.get("/mostplayed", async (req, res) => {
   try {
     const songs = await getMostPlayedSongs();
@@ -230,6 +231,47 @@ router.post("/like/:songId", authenticateToken, async (req, res) => {
       .status(500)
       .json({ error: "Could not update your love for this song." });
   }
+});
+
+router.get("/likeflag/:id", authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  const { id } = req.params;
+
+  const song_id = parseInt(id);
+  const { alreadyLiked } = await checkLikedByUser(userId, song_id);
+  return res.send({
+    alreadyLiked,
+  });
+});
+
+router.get("/songs/creator/:id", async (req, res) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).send({
+      error: "invalid creator",
+    });
+  }
+  const { songs, dbError } = await getSongsByCreator(id);
+  if (dbError) {
+    return res.status(400).send({
+      dbError,
+    });
+  }
+  res.send({
+    songs,
+  });
+});
+
+router.get("/songs/recent", async (req, res) => {
+  const { songs, dbError } = await getNewReleases();
+  if (dbError) {
+    return res.status(400).send({
+      error: dbError,
+    });
+  }
+  res.send({
+    songs,
+  });
 });
 
 export { router as userRoutes };

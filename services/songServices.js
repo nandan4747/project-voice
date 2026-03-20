@@ -1,3 +1,4 @@
+import e from "express";
 import pool from "../db_operations/db.js";
 
 const uploadSong = async (req, public_url) => {
@@ -17,14 +18,34 @@ const uploadSong = async (req, public_url) => {
   }
 };
 
+export const getSongDetailsById = async (songId) => {
+  try {
+    const result = await pool.query(
+      `select s.*, u.username as creator_name from songs s join users u on s.creator_id = u.id where s.id =  $1`,
+      [songId],
+    );
+    const song = result.rows[0];
+    const { isPlayCountUpdated } = await updatePlayCount(songId);
+    if (!isPlayCountUpdated) {
+      return {
+        dbError: "unable to update song state",
+      };
+    }
+    return {
+      song,
+    };
+  } catch (error) {
+    console.log("db error : ", error);
+    return {
+      dbError: "unable to fetch song",
+    };
+  }
+};
+
 const getMostLikedSongs = async () => {
   try {
     const res = await pool.query(
-      `SELECT s.*, u.username AS creator_name 
-       FROM songs s 
-       JOIN users u ON s.creator_id = u.id 
-       ORDER BY s.likes_count DESC 
-       LIMIT 10`,
+      `SELECT id ,title FROM songs ORDER BY likes_count DESC LIMIT 10`,
     );
     return res.rows;
   } catch (err) {
@@ -36,11 +57,7 @@ const getMostLikedSongs = async () => {
 const getMostPlayedSongs = async () => {
   try {
     const res = await pool.query(
-      `SELECT s.*, u.username AS creator_name 
-       FROM songs s 
-       JOIN users u ON s.creator_id = u.id 
-       ORDER BY s.play_count DESC 
-       LIMIT 10`,
+      `SELECT id ,title FROM songs ORDER BY play_count DESC LIMIT 10`,
     );
     return res.rows;
   } catch (err) {
@@ -52,12 +69,7 @@ const getMostPlayedSongs = async () => {
 const getMostPlayedSongsByGenre = async (genre) => {
   try {
     const res = await pool.query(
-      `SELECT s.*, u.username AS creator_name 
-       FROM songs s 
-       JOIN users u ON s.creator_id = u.id 
-       WHERE s.genre = $1 
-       ORDER BY s.play_count DESC 
-       LIMIT 10`,
+      `select id , title from songs where genre = $1 order by play_count DESC LIMIT 10`,
       [genre],
     );
     return res.rows;
@@ -70,13 +82,9 @@ const getMostPlayedSongsByGenre = async (genre) => {
 const searchSongsByTitle = async (searchTerm) => {
   try {
     const result = await pool.query(
-      `SELECT 
-          s.*, 
-          u.username AS creator_name,
-          similarity(s.title, $1) AS score 
-       FROM songs s
-       JOIN users u ON s.creator_id = u.id
-       WHERE s.title % $1 
+      `SELECT id , title ,similarity(title, $1) AS score 
+       FROM songs
+       WHERE title % $1 
        ORDER BY score DESC 
        LIMIT 10`,
       [searchTerm],
@@ -174,7 +182,25 @@ export const toggleLikeSong = async (userId, songId) => {
   }
 };
 
-export const updatePlayCount = async (songId) => {
+export const checkLikedByUser = async (userId, songId) => {
+  try {
+    const checkLike = await pool.query(
+      "SELECT 1 FROM liked_songs WHERE user_id = $1 AND song_id = $2",
+      [userId, songId],
+    );
+    const alreadyLiked = checkLike.rows.length > 0;
+    return {
+      alreadyLiked,
+    };
+  } catch (error) {
+    console.log("db error : ", error);
+    return {
+      alreadyLiked: false,
+    };
+  }
+};
+
+const updatePlayCount = async (songId) => {
   try {
     await pool.query(
       "update songs set play_count = play_count+1 where id = $1 ",
@@ -188,6 +214,41 @@ export const updatePlayCount = async (songId) => {
     return {
       isPlayCountUpdated: false,
     };
+  }
+};
+
+export const getSongsByCreator = async (creatorId) => {
+  try {
+    const result = await pool.query(
+      "select * from songs where creator_id = $1",
+      [parseInt(creatorId)],
+    );
+    const songs = result.rows;
+    return {
+      songs,
+    };
+  } catch (error) {
+    console.log("db error : ", error);
+    return {
+      dbError: "No songs with this creator",
+    };
+  }
+};
+
+export const getNewReleases = async () => {
+  try {
+    const result = await pool.query(
+      "select id, title from songs order by created_at DESC limit 10 ",
+    );
+    const songs = result.rows;
+    return {
+      songs
+    }
+  } catch (err) {
+    console.log("db error : ", err);
+      return {
+      dbError : "enable to fetch recent uploads"
+    }
   }
 };
 

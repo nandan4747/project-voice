@@ -3,9 +3,10 @@ import "dotenv/config";
 import { creatorRoutes } from "./routes/creatorRoutes.js";
 import { userRoutes } from "./routes/userRoutes.js";
 import { db_init } from "./db_operations/db_init.js";
+import cors from "cors";
 
 const app = express();
-
+app.use(cors());
 app.use(express.json());
 
 app.use("/creator", creatorRoutes);
