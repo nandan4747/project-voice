@@ -6,7 +6,11 @@ import { db_init } from "./db_operations/db_init.js";
 import cors from "cors";
 
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: "https://voicemusic.netlify.app",
+  }),
+);
 app.use(express.json());
 
 app.use("/creator", creatorRoutes);
