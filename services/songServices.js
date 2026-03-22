@@ -116,22 +116,24 @@ const getPlayListByUserId = async (userId) => {
 
 export const getPlaylistWithSongs = async (playlistId) => {
   try {
-    const res = await pool.query(
-      `SELECT ps.playlist_id, ps.added_at, s.*, u.username AS creator_name
-       FROM playlist_songs ps
-       JOIN songs s ON ps.song_id = s.id
-       JOIN users u ON s.creator_id = u.id
-       WHERE ps.playlist_id = $1`,
-      [playlistId],
-    );
+    const query = `
+      SELECT 
+        s.id AS id, 
+        s.title AS title 
+      FROM songs s
+      JOIN playlist_songs ps ON s.id = ps.song_id
+      WHERE ps.playlist_id = $1
+    `;
+
+    // Ensure playlistId is a number just in case
+    const res = await pool.query(query, [parseInt(playlistId)]);
     return {
-      songDetails: res.rows,
+      songs: res.rows,
     };
   } catch (err) {
-    console.error("Database error fetching playlist:", err);
-
+    console.error("Database error fetching playlist songs:", err);
     return {
-      dbError: "unable to find songs",
+      dbError: "The database is playing hide and seek.",
     };
   }
 };
@@ -242,13 +244,13 @@ export const getNewReleases = async () => {
     );
     const songs = result.rows;
     return {
-      songs
-    }
+      songs,
+    };
   } catch (err) {
     console.log("db error : ", err);
-      return {
-      dbError : "enable to fetch recent uploads"
-    }
+    return {
+      dbError: "enable to fetch recent uploads",
+    };
   }
 };
 

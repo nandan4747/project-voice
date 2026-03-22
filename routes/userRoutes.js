@@ -14,7 +14,14 @@ import {
 } from "../services/songServices.js";
 import { getCreatorDetailsByid } from "../services/creatorServices.js";
 import { authenticateToken, generateToken } from "../authMiddleware.js";
-import { AddSongToPlayList, createPlayList } from "../services/userServices.js";
+import {
+  AddSongToPlayList,
+  createPlayList,
+  deleteUserAccount,
+  getLikedSongsByUserId,
+  getuserDetails,
+  updatePassword,
+} from "../services/userServices.js";
 import { loginUser, signUpUser } from "../services/userServices.js";
 const router = express.Router();
 
@@ -166,13 +173,18 @@ router.post("/newplaylist", authenticateToken, async (req, res) => {
   });
 });
 router.post("/playlist/add", authenticateToken, async (req, res) => {
-  const { playListId, songId } = parseInt(req.body);
-  if (!playListId || !songId) {
+  const { playListId, songId } = req.body;
+
+  const pId = parseInt(playListId);
+  const sId = parseInt(songId);
+
+  if (!pId || !sId) {
     return res.status(400).send({
       error: "limited details",
     });
   }
-  const dbRes = await AddSongToPlayList(playListId, songId);
+
+  const dbRes = await AddSongToPlayList(pId, sId);
   if (dbRes) {
     return res.send({
       message: "song added to playlist",
@@ -205,13 +217,13 @@ router.get("/playlist/songs", authenticateToken, async (req, res) => {
       error: "invalid playlist ",
     });
   }
-  const { songDetails, dbError } = await getPlaylistWithSongs(playListId);
+  const { songs, dbError } = await getPlaylistWithSongs(playListId);
   if (dbError) {
     return res.status(400).send({
       error: dbError,
     });
   }
-  return res.send({ songDetails });
+  return res.send({ songs, song_count: songs.length });
 });
 
 router.post("/like/:songId", authenticateToken, async (req, res) => {
@@ -272,6 +284,66 @@ router.get("/songs/recent", async (req, res) => {
   res.send({
     songs,
   });
+});
+
+router.get("/details", authenticateToken, async (req, res) => {
+  const userId = parseInt(req.user.id);
+
+  const { user, error } = await getuserDetails(userId);
+  if (error) {
+    return res.status(400).send({ error });
+  }
+  res.send(user);
+});
+
+router.get("/songs/liked", authenticateToken, async (req, res) => {
+  const userId = parseInt(req.user.id);
+  const { songs, error } = await getLikedSongsByUserId(userId);
+  if (error) {
+    return res.status(500).send({ error });
+  }
+  res.send({
+    songs,
+  });
+});
+
+router.put("/update-password", authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  const { oldPassword, newPassword } = req.body;
+
+  if (!oldPassword || !newPassword) {
+    return res
+      .status(400)
+      .json({ error: "Both old and new passwords are required" });
+  }
+
+  if (newPassword.length < 6) {
+    return res
+      .status(400)
+      .json({ error: "New password must be at least 6 characters long" });
+  }
+
+  const result = await updatePassword(userId, oldPassword, newPassword);
+
+  if (result.error) {
+    return res.status(400).json({ error: result.error });
+  }
+
+  res.send({
+    message: "Password updated successfully! Don't forget it this time.",
+  });
+});
+
+router.delete("/delete-account", authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+
+  const result = await deleteUserAccount(userId);
+
+  if (result.error) {
+    return res.status(400).json({ error: result.error });
+  }
+
+  res.send({ message: "Account deleted. See you in the next life!" });
 });
 
 export { router as userRoutes };

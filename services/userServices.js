@@ -77,3 +77,98 @@ export const AddSongToPlayList = async (playlistId, songId) => {
     return false;
   }
 };
+
+export const getuserDetails = async (id) => {
+  try {
+    const details = await pool.query("select * from users where id = $1", [id]);
+    if (details.rows.length === 0) {
+      return {
+        error: "user not found",
+      };
+    }
+    const { password_hash, ...userWithoutPassword } = details.rows[0];
+
+    return {
+      user: userWithoutPassword,
+    };
+  } catch (err) {
+    console.log("db error :".err);
+    return {
+      error: "unable to fetch details",
+    };
+  }
+};
+
+export const getLikedSongsByUserId = async (id) => {
+  try {
+    const query = `
+      SELECT s.id, s.title 
+      FROM songs s 
+      JOIN liked_songs l ON s.id = l.song_id 
+      WHERE l.user_id = $1
+    `;
+
+    const result = await pool.query(query, [id]);
+
+    return {
+      songs: result.rows,
+    };
+  } catch (err) {
+    console.error("DB Error (getLikedSongs):", err);
+    return {
+      error:
+        "Unable to fetch liked songs. The database is playing hard to get.",
+    };
+  }
+};
+
+export const updatePassword = async (userId, oldPassword, newPassword) => {
+  try {
+    // 1. Get the current user's hash
+    const userRes = await pool.query(
+      "SELECT password_hash FROM users WHERE id = $1",
+      [userId],
+    );
+
+    if (userRes.rows.length === 0) return { error: "User not found" };
+
+    const user = userRes.rows[0];
+
+    // 2. Verify the old password matches
+    const isMatch = await bcrypt.compare(oldPassword, user.password_hash);
+    if (!isMatch) return { error: "Current password is incorrect" };
+
+    // 3. Hash the NEW password
+    const saltRounds = 10;
+    const newHash = await bcrypt.hash(newPassword, saltRounds);
+
+    // 4. Update the DB
+    await pool.query("UPDATE users SET password_hash = $1 WHERE id = $2", [
+      newHash,
+      userId,
+    ]);
+
+    return { success: true };
+  } catch (err) {
+    console.error("Password Update Error:", err);
+    return { error: "Internal server error" };
+  }
+};
+
+export const deleteUserAccount = async (userId) => {
+  try {
+    const result = await pool.query(
+      "DELETE FROM users WHERE id = $1 RETURNING id",
+      [userId],
+    );
+
+    if (result.rowCount === 0) {
+      return { error: "User already vanished or never existed." };
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error("Account Deletion Error:", err);
+    return { error: "Database refused to let you go. Try again later." };
+  }
+};
