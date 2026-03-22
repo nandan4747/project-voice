@@ -8,7 +8,8 @@ import cors from "cors";
 const app = express();
 app.use(
   cors({
-    origin: "https://voicemusic.netlify.app",
+    origin: ["https://voicemusic.netlify.app", "http://localhost:5173"],
+    credentials: true,
   }),
 );
 app.use(express.json());
@@ -31,9 +32,9 @@ const startServer = async () => {
   }
 };
 
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 10000;
 const DOMAIN = process.env.SERVER_DOMAIN;
-app.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT, () => {
   console.log(`server is fired : http://${DOMAIN}:${PORT}/`);
 });
 startServer();
