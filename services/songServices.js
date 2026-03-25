@@ -240,7 +240,7 @@ export const getSongsByCreator = async (creatorId) => {
 export const getNewReleases = async () => {
   try {
     const result = await pool.query(
-      "select id, title from songs order by created_at DESC limit 10 ",
+      "select id, title from songs order by created_at DESC limit 25 ",
     );
     const songs = result.rows;
     return {
