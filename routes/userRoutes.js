@@ -3,8 +3,10 @@ import {
   checkLikedByUser,
   getMostLikedSongs,
   getMostPlayedSongs,
+  getMostPlayedSongsByBatch,
   getMostPlayedSongsByGenre,
   getNewReleases,
+  getNewReleasesByLastSongPlayed,
   getPlayListByUserId,
   getPlaylistWithSongs,
   getSongDetailsById,
@@ -12,6 +14,7 @@ import {
   searchSongsByTitle,
   toggleLikeSong,
 } from "../services/songServices.js";
+import { encodeCursor, decodeCursor } from "../services/cursorServices.js";
 import { getCreatorDetailsByid } from "../services/creatorServices.js";
 import { authenticateToken, generateToken } from "../authMiddleware.js";
 import {
@@ -40,16 +43,37 @@ router.get("/play/:id", async (req, res) => {
 });
 
 router.get("/mostplayed", async (req, res) => {
+  const { cursor } = req.query;
+
   try {
-    const songs = await getMostPlayedSongs();
+    let songs;
+
+    if (!cursor) {
+    
+      songs = await getMostPlayedSongs();
+    } else {
+
+      const [lastPlayCount, lastId] = decodeCursor(cursor);
+      songs = await getMostPlayedSongsByBatch(
+        parseInt(lastId),
+        parseInt(lastPlayCount),
+      );
+    }
+
+    let nextCursor = null;
+    if (songs && songs.length === 10) {
+      const last = songs[songs.length - 1];
+      nextCursor = encodeCursor([last.play_count, last.id]);
+    }
+
     res.send({
       type: "most played songs",
-      songs: songs,
+      songs,
+      nextCursor,
     });
   } catch (err) {
-    res.status(500).send({
-      error: "unable to retrive songs",
-    });
+    console.error("MostPlayed Route error:", err);
+    res.status(500).send({ error: "Unable to retrieve songs" });
   }
 });
 
@@ -275,15 +299,36 @@ router.get("/songs/creator/:id", async (req, res) => {
 });
 
 router.get("/songs/recent", async (req, res) => {
-  const { songs, dbError } = await getNewReleases();
-  if (dbError) {
-    return res.status(400).send({
-      error: dbError,
+  const { cursor } = req.query;
+
+  try {
+    let result;
+
+    if (!cursor) {
+      result = await getNewReleases();
+    } else {
+      const [lastTimestamp, lastId] = decodeCursor(cursor);
+      result = await getNewReleasesByLastSongPlayed(parseInt(lastId));
+    }
+
+    if (result.dbError) {
+      return res.status(400).send({ error: result.dbError });
+    }
+
+    let nextCursor = null;
+    if (result.songs && result.songs.length === 10) {
+      const last = result.songs[result.songs.length - 1];
+      nextCursor = encodeCursor([last.created_at, last.id]);
+    }
+
+    res.send({
+      songs: result.songs,
+      nextCursor,
     });
+  } catch (err) {
+    console.error("Router error:", err);
+    res.status(500).send({ error: "Internal server error" });
   }
-  res.send({
-    songs,
-  });
 });
 
 router.get("/details", authenticateToken, async (req, res) => {

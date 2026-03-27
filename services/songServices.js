@@ -53,15 +53,34 @@ const getMostLikedSongs = async () => {
     throw err;
   }
 };
-
 const getMostPlayedSongs = async () => {
   try {
     const res = await pool.query(
-      `SELECT id ,title FROM songs ORDER BY play_count DESC LIMIT 10`,
+      `SELECT id, title, play_count 
+       FROM songs 
+       ORDER BY play_count DESC, id DESC 
+       LIMIT 10`,
     );
     return res.rows;
   } catch (err) {
-    console.error("database error :", err);
+    console.error("Database error in getMostPlayedSongs:", err);
+    throw err;
+  }
+};
+
+export const getMostPlayedSongsByBatch = async (lastSongId, lastPlayCount) => {
+  try {
+    const res = await pool.query(
+      `SELECT id, title, play_count 
+       FROM songs 
+       WHERE (play_count, id) < ($1, $2) 
+       ORDER BY play_count DESC, id DESC 
+       LIMIT 10`,
+      [lastPlayCount, lastSongId],
+    );
+    return res.rows;
+  } catch (err) {
+    console.error("Database error in getMostPlayedSongsByBatch:", err);
     throw err;
   }
 };
@@ -240,17 +259,29 @@ export const getSongsByCreator = async (creatorId) => {
 export const getNewReleases = async () => {
   try {
     const result = await pool.query(
-      "select id, title from songs order by created_at DESC limit 25 ",
+      "SELECT id, title, created_at FROM songs ORDER BY created_at DESC, id DESC LIMIT 10",
     );
-    const songs = result.rows;
-    return {
-      songs,
-    };
+    return { songs: result.rows };
   } catch (err) {
     console.log("db error : ", err);
-    return {
-      dbError: "enable to fetch recent uploads",
-    };
+    return { dbError: "unable to fetch recent uploads" };
+  }
+};
+
+export const getNewReleasesByLastSongPlayed = async (lastSongId) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, title, created_at 
+       FROM songs 
+       WHERE (created_at, id) < (SELECT created_at, id FROM songs WHERE id = $1)
+       ORDER BY created_at DESC, id DESC 
+       LIMIT 10`,
+      [lastSongId],
+    );
+    return { songs: result.rows };
+  } catch (error) {
+    console.error("db error:", error);
+    return { dbError: "unable to fetch" };
   }
 };
 

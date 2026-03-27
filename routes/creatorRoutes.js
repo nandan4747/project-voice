@@ -1,14 +1,13 @@
 import express from "express";
 import { uploadSong } from "../services/songServices.js";
 import { authenticateToken } from "../authMiddleware.js";
-import { signUpCreator, loginCreator } from "../services/creatorServices.js";
+import { signUpCreator } from "../services/creatorServices.js";
 import { generateToken } from "../authMiddleware.js";
 import { getCreatorDetailsByid } from "../services/creatorServices.js";
 const router = express.Router();
 
 import { createClient } from "@supabase/supabase-js";
 import multer from "multer";
-
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -33,19 +32,6 @@ router.post("/signup", async (req, res) => {
 
     const token = generateToken(user);
     res.status(201).json({ message: "Creator created!", token, user });
-  } catch (err) {
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-});
-
-router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-  try {
-    const { user, error } = await loginCreator(email, password);
-    if (error) return res.status(400).json({ message: error });
-
-    const token = generateToken(user);
-    res.status(200).json({ message: "Welcome back, Captain!", token, user });
   } catch (err) {
     res.status(500).json({ message: "Internal Server Error" });
   }

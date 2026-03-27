@@ -28,33 +28,6 @@ export const signUpCreator = async (username, email, password) => {
   }
 };
 
-export const loginCreator = async (email, password) => {
-  try {
-    // 1. Find the user
-    const result = await pool.query("SELECT * FROM users WHERE email = $1", [
-      email,
-    ]);
-    if (result.rows.length === 0) return { error: "Invalid credentials." };
-
-    const user = result.rows[0];
-
-    // 2. Compare passwords
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch) return { error: "Invalid credentials." };
-
-    // 3. Check if they are actually a creator
-    if (user.role !== "creator")
-      return { error: "This is a Creator-only login." };
-
-    // Return everything except the password
-    const { password_hash, ...userWithoutPassword } = user;
-    return { user: userWithoutPassword };
-  } catch (err) {
-    console.error(err);
-    throw new Error("Database failed during login.");
-  }
-};
-
 export const getCreatorDetailsByid = async (user_id) => {
   try {
     const result = await pool.query("SELECT * FROM users where id = $1", [
