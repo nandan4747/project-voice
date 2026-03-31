@@ -103,7 +103,7 @@ const searchSongsByTitle = async (searchTerm) => {
     const result = await pool.query(
       `SELECT id , title ,similarity(title, $1) AS score 
        FROM songs
-       WHERE title % $1 
+       WHERE similarity(title, $1) > 0.15
        ORDER BY score DESC 
        LIMIT 10`,
       [searchTerm],
