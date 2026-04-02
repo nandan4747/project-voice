@@ -133,27 +133,44 @@ const getPlayListByUserId = async (userId) => {
   }
 };
 
-export const getPlaylistWithSongs = async (playlistId) => {
+export const getPlaylistSongs = async (playlistId) => {
   try {
-    const query = `
-      SELECT 
-        s.id AS id, 
-        s.title AS title 
-      FROM songs s
-      JOIN playlist_songs ps ON s.id = ps.song_id
-      WHERE ps.playlist_id = $1
-    `;
-
-    // Ensure playlistId is a number just in case
-    const res = await pool.query(query, [parseInt(playlistId)]);
-    return {
-      songs: res.rows,
-    };
+    const res = await pool.query(
+      `SELECT s.id, s.title, ps.added_at
+       FROM songs s
+       JOIN playlist_songs ps ON s.id = ps.song_id
+       WHERE ps.playlist_id = $1
+       ORDER BY ps.added_at DESC, s.id DESC
+       LIMIT 10`,
+      [parseInt(playlistId)],
+    );
+    return { songs: res.rows };
   } catch (err) {
     console.error("Database error fetching playlist songs:", err);
-    return {
-      dbError: "The database is playing hide and seek.",
-    };
+    return { dbError: "Unable to fetch playlist songs." };
+  }
+};
+
+export const getPlaylistSongsByBatch = async (
+  playlistId,
+  lastAddedAt,
+  lastSongId,
+) => {
+  try {
+    const res = await pool.query(
+      `SELECT s.id, s.title, ps.added_at
+       FROM songs s
+       JOIN playlist_songs ps ON s.id = ps.song_id
+       WHERE ps.playlist_id = $1
+         AND (ps.added_at, s.id) < ($2, $3)
+       ORDER BY ps.added_at DESC, s.id DESC
+       LIMIT 10`,
+      [parseInt(playlistId), lastAddedAt, lastSongId],
+    );
+    return { songs: res.rows };
+  } catch (err) {
+    console.error("Database error fetching playlist songs batch:", err);
+    return { dbError: "Unable to fetch playlist songs." };
   }
 };
 

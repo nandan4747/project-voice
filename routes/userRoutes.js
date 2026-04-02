@@ -8,7 +8,8 @@ import {
   getNewReleases,
   getNewReleasesByLastSongPlayed,
   getPlayListByUserId,
-  getPlaylistWithSongs,
+  getPlaylistSongsByBatch,
+  getPlaylistSongs,
   getSongDetailsById,
   getSongsByCreator,
   removeSongFromPlayList,
@@ -234,19 +235,41 @@ router.get("/playlists", authenticateToken, async (req, res) => {
 });
 
 router.get("/playlist/songs", authenticateToken, async (req, res) => {
-  const playListId = req.query.playListId;
+  const { playListId, cursor } = req.query;
+
   if (!playListId) {
-    return res.status(400).send({
-      error: "invalid playlist ",
-    });
+    return res.status(400).send({ error: "Invalid playlist" });
   }
-  const { songs, dbError } = await getPlaylistWithSongs(playListId);
-  if (dbError) {
-    return res.status(400).send({
-      error: dbError,
-    });
+
+  try {
+    let songs, dbError;
+
+    if (!cursor) {
+      ({ songs, dbError } = await getPlaylistSongs(playListId));
+    } else {
+      const [lastAddedAt, lastSongId] = decodeCursor(cursor);
+      ({ songs, dbError } = await getPlaylistSongsByBatch(
+        playListId,
+        lastAddedAt,
+        parseInt(lastSongId),
+      ));
+    }
+
+    if (dbError) {
+      return res.status(400).send({ error: dbError });
+    }
+
+    let nextCursor = null;
+    if (songs.length === 10) {
+      const last = songs[songs.length - 1];
+      nextCursor = encodeCursor([last.added_at.toISOString(), last.id]);
+    }
+
+    return res.send({ songs, nextCursor, playListId });
+  } catch (err) {
+    console.error("Playlist songs route error:", err);
+    return res.status(500).send({ error: "Unable to retrieve songs" });
   }
-  return res.send({ songs, song_count: songs.length });
 });
 
 router.post("/like/:songId", authenticateToken, async (req, res) => {
