@@ -285,6 +285,19 @@ export const getNewReleasesByLastSongPlayed = async (lastSongId) => {
   }
 };
 
+export const removeSongFromPlayList = async (songId, playlistId) => {
+  try {
+    await pool.query(
+      `DELETE FROM playlist_songs where playlist_id = $1 and song_id = $2 `,
+      [playlistId, songId],
+    );
+    return true;
+  } catch (error) {
+    console.log(error);
+    return false;
+  }
+};
+
 export {
   uploadSong,
   getMostLikedSongs,

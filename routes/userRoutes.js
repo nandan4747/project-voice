@@ -11,6 +11,7 @@ import {
   getPlaylistWithSongs,
   getSongDetailsById,
   getSongsByCreator,
+  removeSongFromPlayList,
   searchSongsByTitle,
   toggleLikeSong,
 } from "../services/songServices.js";
@@ -49,10 +50,8 @@ router.get("/mostplayed", async (req, res) => {
     let songs;
 
     if (!cursor) {
-    
       songs = await getMostPlayedSongs();
     } else {
-
       const [lastPlayCount, lastId] = decodeCursor(cursor);
       songs = await getMostPlayedSongsByBatch(
         parseInt(lastId),
@@ -391,4 +390,17 @@ router.delete("/delete-account", authenticateToken, async (req, res) => {
   res.send({ message: "Account deleted. See you in the next life!" });
 });
 
+router.delete("/playlist/song", authenticateToken, async (req, res) => {
+  const { songId, playListId } = req.query;
+
+  if (!songId || !playListId) {
+    return res.status(400).send({ error: "incomplete details" });
+  }
+
+  const result = await removeSongFromPlayList(
+    parseInt(songId),
+    parseInt(playListId),
+  );
+  return res.send({ success: result });
+});
 export { router as userRoutes };
