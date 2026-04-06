@@ -45,7 +45,7 @@ export const getSongDetailsById = async (songId) => {
 const getMostLikedSongs = async () => {
   try {
     const res = await pool.query(
-      `SELECT id ,title FROM songs ORDER BY likes_count DESC LIMIT 10`,
+      `SELECT id ,title,likes_count,play_count FROM songs ORDER BY likes_count DESC LIMIT 10`,
     );
     return res.rows;
   } catch (err) {
@@ -56,7 +56,7 @@ const getMostLikedSongs = async () => {
 const getMostPlayedSongs = async () => {
   try {
     const res = await pool.query(
-      `SELECT id, title, play_count 
+      `SELECT id, title,likes_count,play_count 
        FROM songs 
        ORDER BY play_count DESC, id DESC 
        LIMIT 10`,
@@ -71,7 +71,7 @@ const getMostPlayedSongs = async () => {
 export const getMostPlayedSongsByBatch = async (lastSongId, lastPlayCount) => {
   try {
     const res = await pool.query(
-      `SELECT id, title, play_count 
+      `SELECT id, title,likes_count,play_count 
        FROM songs 
        WHERE (play_count, id) < ($1, $2) 
        ORDER BY play_count DESC, id DESC 
@@ -88,7 +88,7 @@ export const getMostPlayedSongsByBatch = async (lastSongId, lastPlayCount) => {
 const getMostPlayedSongsByGenre = async (genre) => {
   try {
     const res = await pool.query(
-      `select id , title from songs where genre = $1 order by play_count DESC LIMIT 10`,
+      `select id , title,likes_count,play_count from songs where genre = $1 order by play_count DESC LIMIT 10`,
       [genre],
     );
     return res.rows;
@@ -101,7 +101,7 @@ const getMostPlayedSongsByGenre = async (genre) => {
 const searchSongsByTitle = async (searchTerm) => {
   try {
     const result = await pool.query(
-      `SELECT id , title ,similarity(title, $1) AS score 
+      `SELECT id , title,likes_count,play_count ,similarity(title, $1) AS score 
        FROM songs
        WHERE similarity(title, $1) > 0.15
        ORDER BY score DESC 
@@ -136,7 +136,7 @@ const getPlayListByUserId = async (userId) => {
 export const getPlaylistSongs = async (playlistId) => {
   try {
     const res = await pool.query(
-      `SELECT s.id, s.title, ps.added_at
+      `SELECT s.id, s.title, ps.added_at,s.likes_count,s.play_count
        FROM songs s
        JOIN playlist_songs ps ON s.id = ps.song_id
        WHERE ps.playlist_id = $1
@@ -158,7 +158,7 @@ export const getPlaylistSongsByBatch = async (
 ) => {
   try {
     const res = await pool.query(
-      `SELECT s.id, s.title, ps.added_at
+      `SELECT s.id, s.title, ps.added_at,s.likes_count,s.play_count
        FROM songs s
        JOIN playlist_songs ps ON s.id = ps.song_id
        WHERE ps.playlist_id = $1
@@ -258,7 +258,7 @@ const updatePlayCount = async (songId) => {
 export const getSongsByCreator = async (creatorId) => {
   try {
     const result = await pool.query(
-      "select * from songs where creator_id = $1",
+      "select id,title,likes_count,play_count from songs where creator_id = $1",
       [parseInt(creatorId)],
     );
     const songs = result.rows;
@@ -276,7 +276,7 @@ export const getSongsByCreator = async (creatorId) => {
 export const getNewReleases = async () => {
   try {
     const result = await pool.query(
-      "SELECT id, title, created_at FROM songs ORDER BY created_at DESC, id DESC LIMIT 10",
+      "SELECT id, title,likes_count,play_count, created_at FROM songs ORDER BY created_at DESC, id DESC LIMIT 10",
     );
     return { songs: result.rows };
   } catch (err) {
@@ -288,7 +288,7 @@ export const getNewReleases = async () => {
 export const getNewReleasesByLastSongPlayed = async (lastSongId) => {
   try {
     const result = await pool.query(
-      `SELECT id, title, created_at 
+      `SELECT id, title, created_at,likes_count,play_count
        FROM songs 
        WHERE (created_at, id) < (SELECT created_at, id FROM songs WHERE id = $1)
        ORDER BY created_at DESC, id DESC 
