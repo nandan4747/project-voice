@@ -8,7 +8,11 @@ import cors from "cors";
 const app = express();
 app.use(
   cors({
-    origin: ["https://voicemusic.netlify.app", "http://localhost:5173"],
+    origin: [
+      "https://voicemusic.netlify.app",
+      "http://localhost:5173",
+      "https://voice-music.vercel.app/",
+    ],
     credentials: true,
   }),
 );
