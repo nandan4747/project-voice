@@ -1,5 +1,6 @@
 import e from "express";
 import pool from "../db_operations/db.js";
+import { encodeCursor, decodeCursor } from "./cursorServices.js";
 
 const uploadSong = async (req, public_url) => {
   const { songName, genre } = req.body;
@@ -255,21 +256,45 @@ const updatePlayCount = async (songId) => {
   }
 };
 
-export const getSongsByCreator = async (creatorId) => {
+export const getSongsByCreator = async (
+  creatorId,
+  cursor = null,
+  limit = 10,
+) => {
   try {
-    const result = await pool.query(
-      "select id,title,likes_count,play_count from songs where creator_id = $1",
-      [parseInt(creatorId)],
-    );
-    const songs = result.rows;
-    return {
-      songs,
-    };
+    const params = [parseInt(creatorId)];
+    let cursorClause = "";
+
+    if (cursor) {
+      const [lastId] = decodeCursor(cursor); // destructure array, grab first element
+      cursorClause = `AND id < $2`;
+      params.push(parseInt(lastId));
+    }
+
+    const query = `
+      SELECT id, title, genre, song_src, likes_count, play_count, created_at
+      FROM songs
+      WHERE creator_id = $1
+      ${cursorClause}
+      ORDER BY id DESC
+      LIMIT $${params.length + 1}
+    `;
+    params.push(limit + 1);
+
+    const result = await pool.query(query, params);
+    let songs = result.rows;
+
+    const hasNextPage = songs.length > limit;
+    if (hasNextPage) songs = songs.slice(0, limit);
+
+    const nextCursor = hasNextPage
+      ? encodeCursor([songs[songs.length - 1].id.toString()]) // pass array
+      : null;
+
+    return { songs, nextCursor };
   } catch (error) {
-    console.log("db error : ", error);
-    return {
-      dbError: "No songs with this creator",
-    };
+    console.error("Database Error:", error);
+    return { dbError: "Something went wrong." };
   }
 };
 

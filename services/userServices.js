@@ -1,5 +1,6 @@
 import pool from "../db_operations/db.js";
 import bcrypt from "bcrypt";
+import { encodeCursor, decodeCursor } from "./cursorServices.js";
 
 export const signUpUser = async (username, email, password) => {
   try {
@@ -99,20 +100,39 @@ export const getuserDetails = async (id) => {
   }
 };
 
-export const getLikedSongsByUserId = async (id) => {
+export const getLikedSongsByUserId = async (id, cursor = null, limit = 10) => {
   try {
+    const params = [id];
+    let cursorClause = "";
+
+    if (cursor) {
+      const [lastId] = decodeCursor(cursor);
+      cursorClause = `AND l.song_id < $2`;
+      params.push(parseInt(lastId));
+    }
+
     const query = `
       SELECT s.id, s.title 
       FROM songs s 
       JOIN liked_songs l ON s.id = l.song_id 
       WHERE l.user_id = $1
+      ${cursorClause}
+      ORDER BY l.song_id DESC
+      LIMIT $${params.length + 1}
     `;
+    params.push(limit + 1);
 
-    const result = await pool.query(query, [id]);
+    const result = await pool.query(query, params);
+    let songs = result.rows;
 
-    return {
-      songs: result.rows,
-    };
+    const hasNextPage = songs.length > limit;
+    if (hasNextPage) songs = songs.slice(0, limit);
+
+    const nextCursor = hasNextPage
+      ? encodeCursor([songs[songs.length - 1].id.toString()])
+      : null;
+
+    return { songs, nextCursor };
   } catch (err) {
     console.error("DB Error (getLikedSongs):", err);
     return {

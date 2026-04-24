@@ -302,17 +302,26 @@ router.get("/likeflag/:id", authenticateToken, async (req, res) => {
   });
 });
 
-router.get("/songs/creator/:id", async (req, res) => {
-  const { id } = req.params;
+router.get("/songs/creator", async (req, res) => {
+  const { id, cursor } = req.query;
   if (!id) {
     return res.status(400).send({
       error: "invalid creator",
     });
   }
-  const { songs, dbError } = await getSongsByCreator(id);
+  const { songs, dbError, nextCursor } = await getSongsByCreator(
+    id,
+    cursor || null,
+  );
   if (dbError) {
     return res.status(400).send({
       dbError,
+    });
+  }
+  if (nextCursor) {
+    return res.send({
+      songs,
+      nextCursor,
     });
   }
   res.send({
@@ -365,9 +374,19 @@ router.get("/details", authenticateToken, async (req, res) => {
 
 router.get("/songs/liked", authenticateToken, async (req, res) => {
   const userId = parseInt(req.user.id);
-  const { songs, error } = await getLikedSongsByUserId(userId);
+  const { cursor } = req.query;
+  const { songs, error, nextCursor } = await getLikedSongsByUserId(
+    userId,
+    cursor || null,
+  );
   if (error) {
     return res.status(500).send({ error });
+  }
+  if (nextCursor) {
+    return res.send({
+      songs,
+      nextCursor,
+    });
   }
   res.send({
     songs,
