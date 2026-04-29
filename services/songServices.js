@@ -340,6 +340,32 @@ export const removeSongFromPlayList = async (songId, playlistId) => {
   }
 };
 
+export const getRecentSongsFromGenre = async (genre) => {
+  try {
+    const results = await pool.query(
+      `SELECT id,title,play_count,likes_count from songs where genre = $1 order by  created_at desc limit 10`,
+      [genre],
+    );
+    const songs = results.rows;
+    return { songs };
+  } catch (error) {
+    console.log("error at getRecentSongsFromGenre", error);
+    throw error;
+  }
+};
+
+export const getSongsWithLowPlayCount = async () => {
+  try {
+    const results = await pool.query(
+      `SELECT id,title,play_count,likes_count from songs order by play_count limit 10`,
+    );
+    return { songs: results.rows };
+  } catch (error) {
+    console.log("error at getSongsWithLowPlayCount : ", error);
+    throw error;
+  }
+};
+
 export {
   uploadSong,
   getMostLikedSongs,

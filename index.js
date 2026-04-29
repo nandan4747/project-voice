@@ -12,7 +12,7 @@ app.use(
       "https://voicemusic.netlify.app",
       "http://localhost:5173",
       "https://voice-music.vercel.app",
-      "https://application-voice-mxxx-by8hy2c0d-nandan4747s-projects.vercel.app"
+      "https://application-voice-mxxx-by8hy2c0d-nandan4747s-projects.vercel.app",
     ],
     credentials: true,
   }),
@@ -30,10 +30,10 @@ const startServer = async () => {
   try {
     console.log("initializing tables");
     await db_init();
-    console.log("table initializing success");
+    console.log("connected to db");
   } catch (err) {
     console.error(err);
-    console.log("table initializing failed");
+    console.log("table initializing failed or unable to connect with db");
   }
 };
 

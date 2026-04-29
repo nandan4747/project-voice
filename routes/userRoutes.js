@@ -15,6 +15,8 @@ import {
   removeSongFromPlayList,
   searchSongsByTitle,
   toggleLikeSong,
+  getRecentSongsFromGenre,
+  getSongsWithLowPlayCount,
 } from "../services/songServices.js";
 import { encodeCursor, decodeCursor } from "../services/cursorServices.js";
 import { getCreatorDetailsByid } from "../services/creatorServices.js";
@@ -28,6 +30,7 @@ import {
   updatePassword,
 } from "../services/userServices.js";
 import { loginUser, signUpUser } from "../services/userServices.js";
+import pool from "../db_operations/db.js";
 const router = express.Router();
 
 router.get("/play/:id", async (req, res) => {
@@ -445,4 +448,28 @@ router.delete("/playlist/song", authenticateToken, async (req, res) => {
   );
   return res.send({ success: result });
 });
+
+router.get("/songs/recent/genre", async (req, res) => {
+  try {
+    const { genre } = req.query;
+    const songs = await getRecentSongsFromGenre(genre);
+    res.send(songs);
+  } catch (error) {
+    res.status(500).send({
+      error: "unable to fetch songs",
+    });
+  }
+});
+
+router.get("/songs/forgottenhits", async (req, res) => {
+  try {
+    const songs = await getSongsWithLowPlayCount();
+    res.send(songs);
+  } catch (error) {
+    res.status(500).send({
+      error: "unable to fecth songs",
+    });
+  }
+});
+
 export { router as userRoutes };
