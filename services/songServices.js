@@ -102,7 +102,7 @@ const getMostPlayedSongsByGenre = async (genre) => {
 const searchSongsByTitle = async (searchTerm) => {
   try {
     const result = await pool.query(
-      `SELECT id , title,likes_count,play_count ,similarity(title, $1) AS score 
+      `SELECT id , title,likes_count,play_count,tags,similarity(title, $1) AS score 
        FROM songs
        WHERE similarity(title, $1) > 0.15
        ORDER BY score DESC 
@@ -110,7 +110,21 @@ const searchSongsByTitle = async (searchTerm) => {
       [searchTerm],
     );
 
-    return result.rows;
+    const songs = result.rows;
+    let topMatchTags;
+
+    if (songs.length > 0 && songs[0].score > 0.6) {
+      topMatchTags = songs[0].tags;
+    } else {
+      topMatchTags = searchTerm.trim().toLowerCase().split(/\s+/);
+    }
+    const similarSongs = await getSongsByTags(topMatchTags, 10);
+    songs.push({
+      relatedSongs: similarSongs.songs,
+      nextCursor: similarSongs.nextCursor,
+    });
+
+    return songs;
   } catch (err) {
     console.error("Search Error:", err);
     throw err;
@@ -362,6 +376,45 @@ export const getSongsWithLowPlayCount = async () => {
     return { songs: results.rows };
   } catch (error) {
     console.log("error at getSongsWithLowPlayCount : ", error);
+    throw error;
+  }
+};
+
+export const getSongsByTags = async (tags = [], limit = 50, cursor = null) => {
+ 
+  try {
+    let queryParams = [tags, limit];
+    let cursorFilter = "";
+
+    if (cursor) {
+      const [lastPlayCount, lastId] = decodeCursor(cursor);
+      cursorFilter = `AND (play_count, id) < ($3, $4)`;
+      queryParams.push(lastPlayCount, lastId);
+    }
+
+    const query = `
+      SELECT id, title, play_count, likes_count 
+      FROM songs 
+      WHERE tags && $1::text[] 
+      ${cursorFilter}
+      ORDER BY play_count DESC, id DESC 
+      LIMIT $2;
+    `;
+
+    const result = await pool.query(query, queryParams);
+    const songs = result.rows;
+    let nextCursor = null;
+    if (songs.length > 0) {
+      const lastSong = songs[songs.length - 1];
+      nextCursor = encodeCursor([lastSong.play_count, lastSong.id]);
+    }
+
+    return {
+      songs,
+      nextCursor,
+    };
+  } catch (error) {
+    console.error("Error at getSongsByTags:", error);
     throw error;
   }
 };

@@ -18,6 +18,7 @@ const initializeDatabase = async () => {
     creator_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     likes_count INTEGER DEFAULT 0,
     play_count INTEGER DEFAULT 0,
+    tags text[],
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )`);
 

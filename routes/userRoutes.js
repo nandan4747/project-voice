@@ -17,6 +17,7 @@ import {
   toggleLikeSong,
   getRecentSongsFromGenre,
   getSongsWithLowPlayCount,
+  getSongsByTags,
 } from "../services/songServices.js";
 import { encodeCursor, decodeCursor } from "../services/cursorServices.js";
 import { getCreatorDetailsByid } from "../services/creatorServices.js";
@@ -136,6 +137,23 @@ router.get("/search", async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: "Search engine stalled." });
+  }
+});
+
+router.get(`/tag`, async (req, res) => {
+  try {
+    const { tags, nextCursor } = req.query;
+
+    if (!tags) return res.status(401).send({ error: "absesnce of tags" });
+
+    const tagsArray = tags.trim().toLowerCase().split(/\s+/);
+    const results = await getSongsByTags(tagsArray,10, nextCursor || null);
+
+    res.send({ results: results.songs, nextCursor: results.nextCursor });
+  } catch (error) {
+    res.status(500).send({
+      message: "unable to fetch songs",
+    });
   }
 });
 
