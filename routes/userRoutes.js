@@ -140,7 +140,7 @@ router.get("/search", async (req, res) => {
   }
 });
 
-router.get(`/tag`, async (req, res) => {
+router.get(`/related`, async (req, res) => {
   try {
     const { tags, nextCursor } = req.query;
 
