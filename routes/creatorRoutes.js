@@ -44,7 +44,7 @@ router.post(
   upload.single("songFile"),
   async (req, res) => {
     try {
-      const { songName, genre } = req.body;
+      const { songName, genre, tags } = req.body;
       const file = req.file;
 
       if (!file)
@@ -67,7 +67,17 @@ router.post(
 
       const songSrc = urlData.publicUrl;
 
-      const newSong = await uploadSong(req, songSrc);
+      let proccessedTags = [];
+      if (tags) {
+        proccessedTags = tags
+          .split(/#+/)
+          .map((tag) => tag.trim())
+          .filter(Boolean);
+
+        //console.log(proccessedTags);
+      }
+
+      const newSong = await uploadSong(req, songSrc, proccessedTags);
       res.status(201).json({
         message: "Song uploaded and live!",
         song: newSong,

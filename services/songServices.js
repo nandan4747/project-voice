@@ -2,15 +2,15 @@ import e from "express";
 import pool from "../db_operations/db.js";
 import { encodeCursor, decodeCursor } from "./cursorServices.js";
 
-const uploadSong = async (req, public_url) => {
+const uploadSong = async (req, public_url,tags) => {
   const { songName, genre } = req.body;
 
   const creatorId = req.user.id;
 
   try {
     const result = await pool.query(
-      "INSERT INTO songs (title, genre, song_src, creator_id) VALUES ($1, $2, $3, $4) RETURNING *",
-      [songName, genre, public_url, creatorId],
+      "INSERT INTO songs (title, genre, song_src, creator_id,tags) VALUES ($1, $2, $3, $4 , $5) RETURNING *",
+      [songName, genre, public_url, creatorId,tags],
     );
     return result.rows[0];
   } catch (err) {
