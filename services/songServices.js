@@ -2,7 +2,7 @@ import e from "express";
 import pool from "../db_operations/db.js";
 import { encodeCursor, decodeCursor } from "./cursorServices.js";
 
-const uploadSong = async (req, public_url,tags) => {
+const uploadSong = async (req, public_url, tags) => {
   const { songName, genre } = req.body;
 
   const creatorId = req.user.id;
@@ -10,7 +10,7 @@ const uploadSong = async (req, public_url,tags) => {
   try {
     const result = await pool.query(
       "INSERT INTO songs (title, genre, song_src, creator_id,tags) VALUES ($1, $2, $3, $4 , $5) RETURNING *",
-      [songName, genre, public_url, creatorId,tags],
+      [songName, genre, public_url, creatorId, tags],
     );
     return result.rows[0];
   } catch (err) {
@@ -371,7 +371,7 @@ export const getRecentSongsFromGenre = async (genre) => {
 export const getSongsWithLowPlayCount = async () => {
   try {
     const results = await pool.query(
-      `SELECT id,title,play_count,likes_count from songs order by play_count limit 10`,
+      `SELECT id,title,play_count,likes_count from songs order by created_at ,play_count limit 10`,
     );
     return { songs: results.rows };
   } catch (error) {
@@ -381,7 +381,6 @@ export const getSongsWithLowPlayCount = async () => {
 };
 
 export const getSongsByTags = async (tags = [], limit = 50, cursor = null) => {
- 
   try {
     let queryParams = [tags, limit];
     let cursorFilter = "";

@@ -26,6 +26,7 @@ app.get("/", (req, res) => {
   res.json({ message: "server is online" });
 });
 
+
 const startServer = async () => {
   try {
     console.log("initializing tables");
