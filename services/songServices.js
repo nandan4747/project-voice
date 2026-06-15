@@ -100,6 +100,7 @@ const getMostPlayedSongsByGenre = async (genre) => {
 };
 
 const searchSongsByTitle = async (searchTerm) => {
+  
   try {
     const result = await pool.query(
       `SELECT id , title,likes_count,play_count,tags,similarity(title, $1) AS score 
@@ -111,12 +112,12 @@ const searchSongsByTitle = async (searchTerm) => {
     );
 
     const songs = result.rows;
-    let topMatchTags;
+    let topMatchTags = [];
 
     if (songs.length > 0 && songs[0].score > 0.6) {
       topMatchTags = songs[0].tags;
     } else {
-      topMatchTags = searchTerm.trim().toLowerCase().split(/\s+/);
+      topMatchTags[0] = searchTerm.trim().toLowerCase();
     }
     const similarSongs = await getSongsByTags(topMatchTags, 10);
     songs.push({
@@ -380,9 +381,15 @@ export const getSongsWithLowPlayCount = async () => {
   }
 };
 
-export const getSongsByTags = async (tags = [], limit = 50, cursor = null) => {
+export const getSongsByTags = async (tags = [], limit = 10, cursor = null) => {
   try {
-    let queryParams = [tags, limit];
+    const raw_tags = tags
+    const processedTags = raw_tags.flatMap((tag) => tag.split(" "));
+    const tags_without_space = tags.map((str) => str.replace(/ /g, ""));
+    const finalTags = [...processedTags, ...tags_without_space];
+
+    let queryParams = [finalTags, limit];
+
     let cursorFilter = "";
 
     if (cursor) {
