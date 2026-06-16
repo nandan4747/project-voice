@@ -19,6 +19,29 @@ const uploadSong = async (req, public_url, tags) => {
   }
 };
 
+export const getSongById = async (songId) => {
+  try {
+    const result = await pool.query(
+      "SELECT song_src, creator_id FROM songs WHERE id = $1",
+      [songId],
+    );
+    return result.rows[0];
+  } catch (err) {
+    console.error("Error fetching song details:", err);
+    throw err;
+  }
+};
+
+export const deleteSongFromDb = async (songId) => {
+  try {
+    // ON DELETE CASCADE takes down the playlists and likes with it. It's ruthless.
+    await pool.query("DELETE FROM songs WHERE id = $1", [songId]);
+  } catch (err) {
+    console.error("Error nuking song from DB:", err);
+    throw err;
+  }
+};
+
 export const getSongDetailsById = async (songId) => {
   try {
     const result = await pool.query(
@@ -26,6 +49,11 @@ export const getSongDetailsById = async (songId) => {
       [songId],
     );
     const song = result.rows[0];
+    if (!song) {
+      return {
+        dbError: "unable to fetch song details",
+      };
+    }
     const { isPlayCountUpdated } = await updatePlayCount(songId);
     if (!isPlayCountUpdated) {
       return {
@@ -100,7 +128,6 @@ const getMostPlayedSongsByGenre = async (genre) => {
 };
 
 const searchSongsByTitle = async (searchTerm) => {
-  
   try {
     const result = await pool.query(
       `SELECT id , title,likes_count,play_count,tags,similarity(title, $1) AS score 
@@ -383,7 +410,7 @@ export const getSongsWithLowPlayCount = async () => {
 
 export const getSongsByTags = async (tags = [], limit = 10, cursor = null) => {
   try {
-    const raw_tags = tags
+    const raw_tags = tags;
     const processedTags = raw_tags.flatMap((tag) => tag.split(" "));
     const tags_without_space = tags.map((str) => str.replace(/ /g, ""));
     const finalTags = [...processedTags, ...tags_without_space];

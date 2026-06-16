@@ -4,6 +4,7 @@ import { authenticateToken } from "../authMiddleware.js";
 import { signUpCreator } from "../services/creatorServices.js";
 import { generateToken } from "../authMiddleware.js";
 import { getCreatorDetailsByid } from "../services/creatorServices.js";
+import { getSongById,deleteSongFromDb } from "../services/songServices.js";
 const router = express.Router();
 
 import { createClient } from "@supabase/supabase-js";
@@ -90,6 +91,62 @@ router.post(
       });
     }
   },
+);
+
+/* deleting songs from supabase and db route */
+
+router.delete(
+  "/v1/auth/song/:id",
+  authenticateToken,
+  isCreator,
+  async (req, res) => {
+    try {
+      const songId = req.params.id;
+      const creatorId = req.user.id;
+
+      const song = await getSongById(songId);
+
+      if (!song) {
+        return res
+          .status(404)
+          .json({ message: "Song not found. You can't kill what's already dead." });
+      }
+
+      if (song.creator_id !== creatorId) {
+        return res
+          .status(403)
+          .json({ message: "Nice try, hacker. You can only delete your own tracks." });
+      }
+
+      const urlParts = song.song_src.split("/songs/");
+      if (urlParts.length < 2) {
+        throw new Error("Malformatted song URL.");
+      }
+      const storagePath = urlParts[1];
+
+      // 4. Handle the Supabase deletion right here in the controller
+      const { error: storageError } = await supabase.storage
+        .from("songs")
+        .remove([storagePath]);
+
+      if (storageError) {
+        console.error("Supabase Deletion Error:", storageError);
+        throw storageError;
+      }
+
+      await deleteSongFromDb(songId);
+
+      res.status(200).json({
+        message: "Song completely scrubbed. It never happened.",
+      });
+    } catch (err) {
+      console.error("Delete Route Error:", err);
+      res.status(500).json({
+        message: "Failed to delete the song. The matrix is glitching again.",
+        error: err.message,
+      });
+    }
+  }
 );
 
 router.get("/details", async (req, res) => {
