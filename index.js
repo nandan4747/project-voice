@@ -10,7 +10,7 @@ app.use(
   cors({
     origin: [
       "https://voicemusic.netlify.app",
-      //"http://localhost:5173",
+      "http://localhost:5173",
       "https://voice-music.vercel.app",
       "https://application-voice-mxxx-by8hy2c0d-nandan4747s-projects.vercel.app",
     ],
