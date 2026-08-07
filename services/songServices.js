@@ -88,7 +88,7 @@ const getMostPlayedSongs = async () => {
       `SELECT id, title,likes_count,play_count 
        FROM songs 
        ORDER BY play_count DESC, id DESC 
-       LIMIT 20`,
+       LIMIT 10`,
     );
     return res.rows;
   } catch (err) {
@@ -104,7 +104,7 @@ export const getMostPlayedSongsByBatch = async (lastSongId, lastPlayCount) => {
        FROM songs 
        WHERE (play_count, id) < ($1, $2) 
        ORDER BY play_count DESC, id DESC 
-       LIMIT 20`,
+       LIMIT 10`,
       [lastPlayCount, lastSongId],
     );
     return res.rows;
@@ -184,7 +184,7 @@ export const getPlaylistSongs = async (playlistId) => {
        JOIN playlist_songs ps ON s.id = ps.song_id
        WHERE ps.playlist_id = $1
        ORDER BY ps.added_at DESC, s.id DESC
-       LIMIT 20`,
+       LIMIT 10`,
       [parseInt(playlistId)],
     );
     return { songs: res.rows };
@@ -207,7 +207,7 @@ export const getPlaylistSongsByBatch = async (
        WHERE ps.playlist_id = $1
          AND (ps.added_at, s.id) < ($2, $3)
        ORDER BY ps.added_at DESC, s.id DESC
-       LIMIT 20`,
+       LIMIT 10`,
       [parseInt(playlistId), lastAddedAt, lastSongId],
     );
     return { songs: res.rows };
@@ -301,7 +301,7 @@ const updatePlayCount = async (songId) => {
 export const getSongsByCreator = async (
   creatorId,
   cursor = null,
-  limit = 20,
+  limit = 10,
 ) => {
   try {
     const params = [parseInt(creatorId)];
@@ -359,7 +359,7 @@ export const getNewReleasesByLastSongPlayed = async (lastSongId) => {
        FROM songs 
        WHERE (created_at, id) < (SELECT created_at, id FROM songs WHERE id = $1)
        ORDER BY created_at DESC, id DESC 
-       LIMIT 20`,
+       LIMIT 10`,
       [lastSongId],
     );
     return { songs: result.rows };
