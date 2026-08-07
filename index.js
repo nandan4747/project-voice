@@ -10,7 +10,7 @@ app.use(
   cors({
     origin: [
       "https://voicemusic.netlify.app",
-     // "http://localhost:5173",
+      // "http://localhost:5173",
       "https://voice-music.vercel.app",
       "https://application-voice-mxxx-by8hy2c0d-nandan4747s-projects.vercel.app",
     ],
@@ -23,9 +23,8 @@ app.use("/creator", creatorRoutes);
 app.use("/user", userRoutes);
 
 app.get("/", (req, res) => {
-  res.json({ message: "server is online" , version : 1 });
+  res.json({ message: "server is online", version: 1 });
 });
-
 
 const startServer = async () => {
   try {
