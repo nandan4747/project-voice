@@ -37,7 +37,6 @@ export const insertToPendingSongs = async ({
 };
 
 export const confirmSongUploaded = async (path, supabase) => {
-  console.log("confirmSongUploaded called with path:", path);
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -68,6 +67,29 @@ export const confirmSongUploaded = async (path, supabase) => {
     client.release();
   }
 };
+
+export async function checkUploadStatus(userId, path) {
+  // 1. Check pending uploads
+  const pending = await pool.query(
+    "SELECT 1 FROM pending_uploads WHERE path = $1",
+    [path],
+  );
+  if (pending.rows.length > 0) {
+    return { status: "pending" };
+  }
+
+  // 2. Look for the finished song
+  const song = await pool.query(
+    "SELECT * FROM songs WHERE creator_id = $1 AND right(song_src, length($2)) = $2",
+    [userId, path],
+  );
+  if (song.rows[0]) {
+    return { status: "ready", song: song.rows[0] };
+  }
+
+  // 3. Otherwise, it's missing
+  return { status: "missing" };
+}
 
 export const getSongById = async (songId) => {
   try {

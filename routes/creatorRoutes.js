@@ -7,7 +7,11 @@ import { authenticateToken } from "../authMiddleware.js";
 import { signUpCreator } from "../services/creatorServices.js";
 import { generateToken } from "../authMiddleware.js";
 import { getCreatorDetailsByid } from "../services/creatorServices.js";
-import { getSongById, deleteSongFromDb } from "../services/songServices.js";
+import {
+  getSongById,
+  deleteSongFromDb,
+  checkUploadStatus,
+} from "../services/songServices.js";
 const router = express.Router();
 
 const ALLOWED_TYPES = [
@@ -96,7 +100,6 @@ router.post(
 );
 
 router.post("/v1/webhooks/song-uploaded", async (req, res) => {
-  console.log("Webhook received:", req.body);
   if (req.get("x-webhook-secret") !== process.env.WEBHOOK_SECRET) {
     return res.sendStatus(401);
   }
@@ -105,6 +108,30 @@ router.post("/v1/webhooks/song-uploaded", async (req, res) => {
   const { success } = await confirmSongUploaded(path, supabase);
   return res.sendStatus(success ? 200 : 500);
 });
+
+router.get(
+  "/v1/auth/upload/status",
+  authenticateToken,
+  isCreator,
+  async (req, res) => {
+    try {
+      const { path } = req.query;
+      if (
+        !path ||
+        path.includes("..") ||
+        !path.startsWith(`uploads/${req.user.id}/`)
+      ) {
+        return res.status(403).json({ message: "Invalid path." });
+      }
+      const result = await checkUploadStatus(req.user.id, path);
+
+      return res.json(result);
+    } catch (err) {
+      console.error("Status Route Error:", err);
+      res.status(500).json({ message: "Could not check status." });
+    }
+  },
+);
 
 router.delete(
   "/v1/auth/song/:id",
