@@ -37,6 +37,7 @@ export const insertToPendingSongs = async ({
 };
 
 export const confirmSongUploaded = async (path) => {
+  console.log("confirmSongUploaded called with path:", path);
   const client = await pool.connect();
   try {
     await client.query("BEGIN");

@@ -96,6 +96,7 @@ router.post(
 );
 
 router.post("/v1/webhooks/song-uploaded", async (req, res) => {
+  console.log("Webhook received:", req.body);
   if (req.get("x-webhook-secret") !== process.env.WEBHOOK_SECRET) {
     return res.sendStatus(401);
   }
