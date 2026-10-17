@@ -10,6 +10,20 @@ import { getCreatorDetailsByid } from "../services/creatorServices.js";
 import { getSongById, deleteSongFromDb } from "../services/songServices.js";
 const router = express.Router();
 
+const ALLOWED_TYPES = [
+  "audio/mpeg",
+  "audio/mp3",
+  "audio/wav",
+  "audio/x-wav",
+  "audio/ogg",
+  "audio/mp4",
+  "audio/x-m4a",
+  "audio/m4a",
+  "audio/aac",
+  "audio/flac",
+  "audio/webm",
+];
+
 import { createClient } from "@supabase/supabase-js";
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -88,7 +102,7 @@ router.post("/v1/webhooks/song-uploaded", async (req, res) => {
 
   const { path } = req.body;
   const { success } = await confirmSongUploaded(path);
-  return success ? res.status(200) : res.status(500);
+  return res.sendStatus(success ? 200 : 500);
 });
 
 router.delete(
