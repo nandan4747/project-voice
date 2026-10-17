@@ -1,15 +1,16 @@
 import express from "express";
-import { uploadSong } from "../services/songServices.js";
+import {
+  insertToPendingSongs,
+  confirmSongUploaded,
+} from "../services/songServices.js";
 import { authenticateToken } from "../authMiddleware.js";
 import { signUpCreator } from "../services/creatorServices.js";
 import { generateToken } from "../authMiddleware.js";
 import { getCreatorDetailsByid } from "../services/creatorServices.js";
-import { getSongById,deleteSongFromDb } from "../services/songServices.js";
+import { getSongById, deleteSongFromDb } from "../services/songServices.js";
 const router = express.Router();
 
 import { createClient } from "@supabase/supabase-js";
-import multer from "multer";
-
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -22,7 +23,6 @@ const isCreator = (req, res, next) => {
     res.status(403).json({ message: "Access denied. Creator only." });
   }
 };
-const upload = multer({ storage: multer.memoryStorage() });
 
 router.post("/signup", async (req, res) => {
   const { username, email, password } = req.body;
@@ -39,61 +39,57 @@ router.post("/signup", async (req, res) => {
 });
 
 router.post(
-  "/v1/auth/upload",
+  "/v1/auth/upload/sign",
   authenticateToken,
   isCreator,
-  upload.single("songFile"),
   async (req, res) => {
     try {
-      const { songName, genre, tags } = req.body;
-      const file = req.file;
+      const { fileName, contentType, songName, genre, tags } = req.body;
 
-      if (!file)
-        return res
-          .status(400)
-          .json({ message: "No song file provided, homie." });
-
-      const fileName = `${Date.now()}_${file.originalname.replace(/\s/g, "_")}`;
-      const { data, error } = await supabase.storage
-        .from("songs")
-        .upload(`uploads/${fileName}`, file.buffer, {
-          contentType: file.mimetype,
-        });
-
-      if (error) throw error;
-
-      const { data: urlData } = supabase.storage
-        .from("songs")
-        .getPublicUrl(`uploads/${fileName}`);
-
-      const songSrc = urlData.publicUrl;
-
-      let proccessedTags = [];
-      if (tags) {
-        proccessedTags = tags
-          .split(/#+/)
-          .map((tag) => tag.trim())
-          .filter(Boolean);
-
-        //console.log(proccessedTags);
+      if (!fileName || !songName || !ALLOWED_TYPES.includes(contentType)) {
+        return res.status(400).json({ message: "Invalid request." });
       }
 
-      const newSong = await uploadSong(req, songSrc, proccessedTags);
-      res.status(201).json({
-        message: "Song uploaded and live!",
-        song: newSong,
+      const safeName = fileName.replace(/[^\w.\-]/g, "_");
+      const path = `uploads/${req.user.id}/${Date.now()}_${safeName}`;
+
+      const { data, error } = await supabase.storage
+        .from("songs")
+        .createSignedUploadUrl(path);
+      if (error) throw error;
+
+      const processedTags = tags
+        ? tags
+            .split(/#+/)
+            .map((t) => t.trim())
+            .filter(Boolean)
+        : [];
+
+      await insertToPendingSongs({
+        path,
+        userId: req.user.id,
+        songName,
+        genre,
+        processedTags,
       });
+
+      res.json({ path: data.path, token: data.token });
     } catch (err) {
-      console.error("Upload Route Error:", err);
-      res.status(500).json({
-        message: "Failed to upload the song. The matrix is glitching.",
-        error: err.message,
-      });
+      console.error("Sign Route Error:", err);
+      res.status(500).json({ message: "Could not create upload URL." });
     }
   },
 );
 
-/* deleting songs from supabase and db route */
+router.post("/v1/webhooks/song-uploaded", async (req, res) => {
+  if (req.get("x-webhook-secret") !== process.env.WEBHOOK_SECRET) {
+    return res.sendStatus(401);
+  }
+
+  const { path } = req.body;
+  const { success } = await confirmSongUploaded(path);
+  return success ? res.status(200) : res.status(500);
+});
 
 router.delete(
   "/v1/auth/song/:id",
@@ -107,15 +103,15 @@ router.delete(
       const song = await getSongById(songId);
 
       if (!song) {
-        return res
-          .status(404)
-          .json({ message: "Song not found. You can't kill what's already dead." });
+        return res.status(404).json({
+          message: "Song not found. You can't kill what's already dead.",
+        });
       }
 
       if (song.creator_id !== creatorId) {
-        return res
-          .status(403)
-          .json({ message: "Nice try, hacker. You can only delete your own tracks." });
+        return res.status(403).json({
+          message: "Nice try, hacker. You can only delete your own tracks.",
+        });
       }
 
       const urlParts = song.song_src.split("/songs/");
@@ -146,7 +142,7 @@ router.delete(
         error: err.message,
       });
     }
-  }
+  },
 );
 
 router.get("/details", async (req, res) => {

@@ -40,6 +40,16 @@ const initializeDatabase = async () => {
     added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (playlist_id, song_id)
 )`);
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS pending_uploads (
+  path TEXT PRIMARY KEY,
+  creator_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  genre VARCHAR(100),
+  tags TEXT[],
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)`);
+
     await pool.query(`CREATE EXTENSION IF NOT EXISTS pg_trgm`);
   } catch (err) {}
 };

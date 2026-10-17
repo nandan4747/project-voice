@@ -19,6 +19,55 @@ const uploadSong = async (req, public_url, tags) => {
   }
 };
 
+export const insertToPendingSongs = async ({
+  path,
+  userId,
+  songName,
+  genre,
+  processedTags,
+}) => {
+  try {
+    await pool.query(
+      "INSERT INTO pending_uploads (path, creator_id, title, genre, tags) VALUES ($1,$2,$3,$4,$5)",
+      [path, userId, songName, genre, processedTags],
+    );
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const confirmSongUploaded = async (path) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query(
+      "DELETE FROM pending_uploads WHERE path = $1 RETURNING *",
+      [path],
+    );
+    if (!rows[0]) {
+      await client.query("ROLLBACK");
+      return { success: true, message: "song already processed" };
+    }
+
+    const p = rows[0];
+    const { data: urlData } = supabase.storage.from("songs").getPublicUrl(path);
+
+    await client.query(
+      "INSERT INTO songs (title, genre, song_src, creator_id, tags) VALUES ($1,$2,$3,$4,$5)",
+      [p.title, p.genre, urlData.publicUrl, p.creator_id, p.tags],
+    );
+
+    await client.query("COMMIT");
+    return { success: true, message: "song processing completed successfully" };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("Webhook error:", err);
+    return { success: false, message: "error while processing song file" };
+  } finally {
+    client.release();
+  }
+};
+
 export const getSongById = async (songId) => {
   try {
     const result = await pool.query(
