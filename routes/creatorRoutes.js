@@ -102,7 +102,7 @@ router.post("/v1/webhooks/song-uploaded", async (req, res) => {
   }
 
   const { path } = req.body;
-  const { success } = await confirmSongUploaded(path);
+  const { success } = await confirmSongUploaded(path, supabase);
   return res.sendStatus(success ? 200 : 500);
 });
 

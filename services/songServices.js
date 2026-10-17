@@ -36,7 +36,7 @@ export const insertToPendingSongs = async ({
   }
 };
 
-export const confirmSongUploaded = async (path) => {
+export const confirmSongUploaded = async (path, supabase) => {
   console.log("confirmSongUploaded called with path:", path);
   const client = await pool.connect();
   try {
